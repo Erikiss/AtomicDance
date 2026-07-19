@@ -1,22 +1,23 @@
 # Die latente Uhr des AtomicDance-Planners
 
-**Eine mechanistische Untersuchung in fünf Methoden — und die Artefakte, die fast zu Fehlschlüssen geführt hätten**
+**Eine mechanistische Untersuchung in sechs Methoden — und die Artefakte, die fast zu Fehlschlüssen geführt hätten**
 
-*Notebook: [`notebooks/AtomicDance_MechInterp_Planner.ipynb`](../notebooks/AtomicDance_MechInterp_Planner.ipynb) (v5) · Stand: 19. Juli 2026*
+*Notebook: [`notebooks/AtomicDance_MechInterp_Planner.ipynb`](../notebooks/AtomicDance_MechInterp_Planner.ipynb) (v6; Abschnitt 21 „Secret Extraction" bereits implementiert, Lauf ausstehend) · Stand: 19. Juli 2026*
 
 ---
 
 ## Zusammenfassung
 
-Der AtomicDance-Planner — ein selbst trainiertes diskretes Diffusionsmodell (UniformD3PM, 19 Mio. Parameter), das aus 35-dimensionalen AIST++-Musikfeatures frameweise Atomic-Move-Pläne generiert — wurde mit fünf unabhängigen Mech-Interp-Methoden untersucht: lineare/nichtlineare Probes, symbolisches Attention-Programm-Replacement, Stochastic Parameter Decomposition (SPD) und Jacobian-Lens mit Geometrie-Variation. Das Ergebnis ist eine kohärente mechanistische Geschichte:
+Der AtomicDance-Planner — ein selbst trainiertes diskretes Diffusionsmodell (UniformD3PM, 19 Mio. Parameter), das aus 35-dimensionalen AIST++-Musikfeatures frameweise Atomic-Move-Pläne generiert — wurde mit sechs unabhängigen Mech-Interp-Methoden untersucht: lineare/nichtlineare Probes, symbolisches Attention-Programm-Replacement, Stochastic Parameter Decomposition (SPD), Jacobian-Lens mit Geometrie-Variation und eine NLA-analoge Sub-Workspace-Dekodierung. Das Ergebnis ist eine kohärente mechanistische Geschichte:
 
 1. **Der Planner integriert keinen musikalischen Takt.** Beats werden als lokale Impulse perfekt durchgereicht, aber es existiert keine Beat-Phasen-Repräsentation — weder linear noch nichtlinear dekodierbar, und das Verhalten (Transition↔Beat-Alignment) bestätigt es.
 2. **Der Planner führt eine echte, frameweise Verifikations-Spur** („Ist dieses Frame schon final?"), die deutlich mehr ist als Label-Durchleitung: +0.23 AUC über der Label-Identitäts-Baseline auf Movement-Frames, über die gesamte Denoising-Trajektorie.
 3. **Diese Spur lebt nicht in einzelnen Attention-Heads** (maximaler Einzel-Head-Schaden: −0.014 von +0.31), sondern ist ein **superponiertes Ensemble von Rang-1-Richtungen**, konzentriert in der MLP-Ausgabematrix von Layer 4 (55 % des Ablationsschadens in Layer 4, 69 % in den `linear2`-Matrizen).
 4. **Die Polarität ist invertiert:** Die tragenden Komponenten feuern auf *instabile* Frames — die „Uhr" ist physisch ein **Instabilitäts-Detektor**; Settledness wird als Abwesenheit dieses Signals gelesen. Für einen Denoiser ist das die funktional richtige Kodierung („wo ist noch Arbeit?").
 5. **Die Uhr ist ein geometrischer Code, die Plan-Grammatik nicht:** Unter kontrollierten Geometrie-Eingriffen (Skalierung, Rotation im Top-Jacobian-Subraum, Translationen) bleibt der Plan-Inhalt praktisch vollständig invariant (Argmax-Agreement ≥ 0.999 bei moderaten Eingriffen), während die Uhr-Anzeige mit Orientierung und Amplitude kovariiert — bei 90°-Rotation in der Top-2-J-Ebene kollabiert sie um −0.52 bei noch 91 % intakter Grammatik.
+6. **Unterhalb des Workspace: getragen, still, lesbar.** ~88 % der Masse typischer Konzept-Richtungen liegt außerhalb des Top-64-J-Zeilenraums. Injiziert man diese Sub-J-Komponenten, bleibt der Output vollständig blind (Plan-Agreement ≥ 0.999, KL ≤ 0.054) — ein extern trainierter Aktivierungs-Dekoder benennt sie dennoch **perfekt** (Accuracy 1.00 bei 9 von 10 Konzepten). Dazu eine Schreib-/Lese-Asymmetrie der Uhr: Die SPD-Schreib-Richtung c63 liegt zu 44,8 % im Workspace (3,6× Zufall), die Probe-Lese-Richtung nur zu 5,0 % (0,4× Zufall) — **geschrieben wird im Workspace, gelesen darunter.**
 
-Ebenso wichtig wie die Befunde sind die **sieben methodischen Artefakte**, die unterwegs identifiziert und neutralisiert wurden — jedes davon hätte unentdeckt zu einem plausiblen, aber falschen Schluss geführt.
+Ebenso wichtig wie die Befunde sind die **acht methodischen Artefakte**, die unterwegs identifiziert und neutralisiert wurden — jedes davon hätte unentdeckt zu einem plausiblen, aber falschen Schluss geführt.
 
 ---
 
@@ -54,6 +55,8 @@ Diese Liste ist das methodische Rückgrat der Arbeit. Jeder Punkt ist ein real a
 **A6 — Loss-Koeffizienten sind domänenspezifisch.** Die SPD-Defaults sind auf LM-KL-Größenordnungen (~1) kalibriert; die Planner-KL liegt bei ~0.004. Importance-Minimality erdrückte die Rekonstruktion (L0: 40 → ~1 in 250 Schritten), die Komponenten trugen nichts (`ci-masked ≈ zero-masked`) — die erste Attribution war uninformativ. Nach Rebalancierung (coeff_imp ÷10, coeff_stoch ×25): 75,9 % Rekonstruktion, valide Attribution. **Qualitäts-Gate:** Komponenten müssen den MLP-Anteil des Zielsignals mehrheitlich tragen, sonst keine Interpretation.
 
 **A7 — In Residual-Netzen ist der mittlere Jacobian identitätsdominiert.** `J_l ≈ I + Korrekturen` (Diagonalmittel ≈ 1.0; Nicht-Identitäts-Anteil 52 % → 16 % mit der Tiefe). Ein Low-Rank-„Workspace" kann auf Transport-Ebene strukturell nicht erscheinen (effektiver Rang 440–503 von 512); die Analyse muss auf den Nicht-Identitäts-Rest bzw. auf gezielte Subraum-Interventionen ausweichen.
+
+**A8 — Interne Anzeigen unter Injektion fester Vektoren enthalten Projektions-Artefakte.** Für einen festen Eingriffsvektor v ist die Verschiebung einer linearen Probe teilweise der konstante Offset α·s·(w·v) — daher das saubere Vorzeichen-Flip zwischen Orth- und Zufalls-Translationen (19c) und Uhr-Shifts von ±0.2–0.4 selbst bei Zufallsrichtungen (20b). Belastbar sind Rotationen (normerhaltend, KL-belegt netzwerk-vermittelt), Selbst-Injektions-Kontrollen (uhr_probe/v_⊥: +18.3, erwartbar) und relative Vergleiche — nie absolute Einzel-Shifts.
 
 ---
 
@@ -145,15 +148,41 @@ Die präzisierte Form der Ausgangsthese: nicht *eine* orthogonale Richtung, sond
 
 ---
 
-## 8. Synthese
+## 8. Befund 6 — Unterhalb des Workspace: getragen, still, lesbar (NLA-Analog)
 
-> Der AtomicDance-Planner hört keinen Takt, aber er beobachtet sich selbst: Er unterhält eine frameweise, geometrisch kodierte Instabilitäts-Landkarte seines eigenen Denoising-Prozesses — implementiert als superponiertes Ensemble von Rang-1-Richtungen in der MLP-Ausgabe von Layer 4 — während der Plan-Inhalt davon getrennt, kategorisch und eingriffsrobust repräsentiert ist.
+Setup nach dem nla-introspection-Muster: Konzept-Richtungen (6 Genre-Zentroiden, Uhr-Lese-Richtung, SPD-Schreib-Richtung c63, 2 Zufalls-Kontrollen) werden gegen den Top-64-Zeilenraum von J₃ gespalten (`v_J` im „Workspace", `v_⊥` darunter) und bei Layer 3 injiziert. Da der Planner keine Sprache hat, ersetzt ein extern trainierter Aktivierungs-Dekoder (MLP über Layer-6-Aktivierungen, mit `none`-Klasse und Song-Split) den NLA.
 
-Einordnung: Die Spur ist das frameweise D3PM-Analogon eines Verifikations-Gates (vgl. Termination-Circuits in Reasoning-LMs) und die Inhalt/Prozess-Trennung spiegelt die Workspace-Intuition — mit der residual-bedingten Einschränkung A7, dass „Transport-Subräume" hier nicht low-rank sind. Fünf Methoden, ein konsistentes Bild; jede Methode hat mindestens ein Artefakt der vorherigen korrigiert.
+**Workspace-Anatomie (20a):** Zufallsniveau = 64/512 = 0.125.
+
+| Konzept | J-Anteil | Lesart |
+|---|---|---|
+| Genres (6×) | 0.077–0.160 | ≈ Zufall — Genre wird vom Transport nicht bevorzugt |
+| Zufalls-Kontrollen | 0.117 / 0.153 | ≈ Zufall — Kalibrierung bestanden |
+| **Uhr-Lese-Richtung (Probe)** | **0.050** | 0,4× Zufall — liest bevorzugt *unterhalb* des Workspace |
+| **Uhr-Schreib-Richtung (c63)** | **0.448** | 3,6× Zufall — schreibt *in* den Workspace |
+
+**Blindheit des Outputs (20b):** Alle 20 Injektionen (beide Komponenten, alle Konzepte) lassen den Plan unberührt — Agreement ≥ 0.999, Logit-KL 0.002–0.054. Die interne Uhr-Anzeige reagiert dagegen selektiv (Selbst-Injektions-Kontrolle uhr_probe/v_⊥: +18.3; c63: v_⊥ wirkt 12× stärker als v_J); absolute Translations-Shifts stehen unter A8-Vorbehalt.
+
+**Externer Dekoder (20c):**
+
+| | v_⊥ (sub-J) | v_J (Workspace) |
+|---|---|---|
+| 9 von 10 Konzepten | **1.00** | 0.00 (→ als `none` klassifiziert: nur ~12 % Masse) |
+| c63 (einziges Konzept mit J-Anteil 0.45) | 0.56 | 1.00 |
+
+Chance ≈ 0.09 (11 Klassen). **~88 % der Konzeptmasse wird vom Residual-Identitäts-Pfad (A7) bis in die Endschicht getragen, ist am Output kausal still — und extern perfekt dekodierbar.** Die c63-Inversion spiegelt exakt ihre 20a-Zerlegung und dient als eingebaute Positiv-Kontrolle. Konsequenz für Monitoring: Wer diesen Planner nur am Verhalten beobachtet, sieht einen kleinen Ausschnitt seines inneren Zustands; ein einfacher externer Dekoder sieht praktisch alles. *(Einschränkungen: Der Dekoder erkennt injizierte Konzepte, noch nicht natürlich vorkommende Sub-J-Inhalte; Blindheit gilt für Dosis α = 1.0; die gedruckte False-Positive-Rate fiel dem PDF-Export zum Opfer — das v_J→`none`-Muster impliziert FPR ≈ 0.)*
 
 ---
 
-## 9. Offene Punkte
+## 9. Synthese
+
+> Der AtomicDance-Planner hört keinen Takt, aber er beobachtet sich selbst: Er unterhält eine frameweise, geometrisch kodierte Instabilitäts-Landkarte seines eigenen Denoising-Prozesses — implementiert als superponiertes Ensemble von Rang-1-Richtungen in der MLP-Ausgabe von Layer 4, **geschrieben in den transportierten Workspace, gelesen unterhalb davon** — während der Plan-Inhalt davon getrennt, kategorisch und eingriffsrobust repräsentiert ist. Der Großteil dessen, was im Stream liegt, erreicht den Output nie — bleibt aber von außen vollständig lesbar.
+
+Einordnung: Die Spur ist das frameweise D3PM-Analogon eines Verifikations-Gates (vgl. Termination-Circuits in Reasoning-LMs); die Inhalt/Prozess-Trennung und die Sub-Workspace-Lesbarkeit spiegeln Workspace- und NLA-Befunde aus LLMs im Miniaturformat — mit der residual-bedingten Einschränkung A7, dass „Transport-Subräume" hier nicht low-rank sind. Sechs Methoden, ein konsistentes Bild; jede Methode hat mindestens ein Artefakt der vorherigen korrigiert.
+
+---
+
+## 10. Offene Punkte
 
 1. **Layer-5–7-Struktur-Heads** gegen die Uhr testen (Probe auf Layer 7 oder Verhaltens-Damage) — A5 auflösen.
 2. **Top-k-Gemeinschafts-Ablation** der SPD-Komponenten (Einzelablation unterschätzt Redundanz) + Schreibrichtungs-Check (cos(U_c63, Probe-Richtung)).
@@ -162,13 +191,16 @@ Einordnung: Die Spur ist das frameweise D3PM-Analogon eines Verifikations-Gates 
 5. **Sampler-Kollaps prüfen:** `transition_frac` der Samples (0.77–1.0) gegen die Ground-Truth-Rate (`(test_labels == 0).mean()`) — möglicher eigenständiger Trainingsbefund.
 6. **Genre-Frage** ist mit diesem Test-Split unbeantwortbar (A1) — Probing-Fenster aus dem Train-Split ziehen (mehrere Songs pro Genre), Planner bleibt eingefroren.
 7. **Finetuning mit Beat-Phasen-Hilfsziel** — jetzt empirisch begründet (Befund 1).
+8. **Natürliche Sub-J-Inhalte lesen** (Befund 6 nutzt injizierte Konzepte): z. B. die Uhr rein aus Sub-J-Projektionen dekodieren; dazu Dosis-Wirkungs-Kurve der Output-Blindheit und Dokumentation der False-Positive-Rate.
+9. **Secret Extraction am Tatort (Abschnitt 21, implementiert, Lauf ausstehend):** Uhr-Trigger rein aus den L4-MLP-Gewichten rekonstruieren (Input-Optimierung + Neuron-Seeds), validiert gegen das Settledness-Maß; der Weight-Reader über die Trainings-Population ist der Phase-2-Anschluss.
+10. **Phase 2 — Trainingskontext-Variation:** Literatur- und Versuchsplan liegen in [`training_context_literature.md`](training_context_literature.md) (Achsen Seeds/Daten/Schedule/Beat-Loss/`--transition-weight`/Architektur × v6-Assay).
 
 ---
 
 ## Anhang: Werkzeuge, Artefakte, Versionen
 
-**Werkzeuge (Forks):** [`Erikiss/explaining_attention_heads`](https://github.com/Erikiss/explaining_attention_heads) (Programm-Replacement) · [`Erikiss/param-decomp`](https://github.com/Erikiss/param-decomp) (`nano_param_decomp`-SPD) · [`Erikiss/jacobian-lens`](https://github.com/Erikiss/jacobian-lens) (J-Lens). Beispiel-Vorlagen: subliminal-coax-Notebooks 01–04 (Beat-Tabelle, τ_dlm-Latent-Clock, Puppet-Time-Probes, CoAx).
+**Werkzeuge (Forks):** [`Erikiss/explaining_attention_heads`](https://github.com/Erikiss/explaining_attention_heads) (Programm-Replacement) · [`Erikiss/param-decomp`](https://github.com/Erikiss/param-decomp) (`nano_param_decomp`-SPD) · [`Erikiss/jacobian-lens`](https://github.com/Erikiss/jacobian-lens) (J-Lens) · [`Erikiss/nla-introspection`](https://github.com/Erikiss/nla-introspection) (Sub-Workspace-Dekodierung) · [`Erikiss/mlp-secret-extraction`](https://github.com/Erikiss/mlp-secret-extraction) (Abschnitt 21). Beispiel-Vorlagen: subliminal-coax-Notebooks 01–04 (Beat-Tabelle, τ_dlm-Latent-Clock, Puppet-Time-Probes, CoAx).
 
-**Ergebnis-Artefakte** (`MyDrive/AtomicDance/mechinterp/outputs/`): `planner_linear_probes.csv` · `planner_rhythm_frame_probes.csv` · `planner_phase_linear_vs_mlp.csv` · `planner_beat_alignment.csv` · `planner_settledness_probe.csv` · `planner_settledness_controls.csv` · `planner_head_program_bestfit.csv` · `planner_head_replacement_gap.csv` · `planner_spd_component_attribution.csv` · `planner_jacobian_lens.pt` · `planner_jspace_spectra.csv` · `planner_geometry_variation.csv` (+ zugehörige PNGs).
+**Ergebnis-Artefakte** (`MyDrive/AtomicDance/mechinterp/outputs/`): `planner_linear_probes.csv` · `planner_rhythm_frame_probes.csv` · `planner_phase_linear_vs_mlp.csv` · `planner_beat_alignment.csv` · `planner_settledness_probe.csv` · `planner_settledness_controls.csv` · `planner_head_program_bestfit.csv` · `planner_head_replacement_gap.csv` · `planner_spd_component_attribution.csv` · `planner_jacobian_lens.pt` · `planner_jspace_spectra.csv` · `planner_geometry_variation.csv` · `planner_concept_jsplit.csv` · `planner_subj_blindness.csv` · `planner_subj_decoder.csv` · `planner_mlp4_secrets.csv` (ausstehend) (+ zugehörige PNGs).
 
-**Notebook-Versionen:** v2 Modell-Rekonstruktion verifiziert (`d5bfc58`) → v2.1 sBM-Guard (`750204e`) → v3 Rhythmus-/Settledness-Probes (`0c55641`) → v3.1 Entscheidungszellen (`97b63e0`) → v3.2 Head-Replacement (`b32ff0e`) → v4/v4.1 SPD (`c628d4e`, `1fbf639`) → v5 Jacobian-Lens (`56cdebd`, `dba1f6c`).
+**Notebook-Versionen:** v2 Modell-Rekonstruktion verifiziert (`d5bfc58`) → v2.1 sBM-Guard (`750204e`) → v3 Rhythmus-/Settledness-Probes (`0c55641`) → v3.1 Entscheidungszellen (`97b63e0`) → v3.2 Head-Replacement (`b32ff0e`) → v4/v4.1 SPD (`c628d4e`, `1fbf639`) → v5 Jacobian-Lens (`56cdebd`, `dba1f6c`) → v6 Tiefenbohrung (`2c70181`, `1ecb214`, `db784b6`) → v7 Secret Extraction (`7d1ef11`).
