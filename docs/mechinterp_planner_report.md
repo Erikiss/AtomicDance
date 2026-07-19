@@ -1,14 +1,14 @@
 # Die latente Uhr des AtomicDance-Planners
 
-**Eine mechanistische Untersuchung in sieben Methoden — und die Artefakte, die fast zu Fehlschlüssen geführt hätten**
+**Eine mechanistische Untersuchung in acht Methoden — und die Artefakte, die fast zu Fehlschlüssen geführt hätten**
 
-*Notebook: [`notebooks/AtomicDance_MechInterp_Planner.ipynb`](../notebooks/AtomicDance_MechInterp_Planner.ipynb) (v7) · Stand: 19. Juli 2026*
+*Notebook: [`notebooks/AtomicDance_MechInterp_Planner.ipynb`](../notebooks/AtomicDance_MechInterp_Planner.ipynb) (v9.1) · Stand: 20. Juli 2026*
 
 ---
 
 ## Zusammenfassung
 
-Der AtomicDance-Planner — ein selbst trainiertes diskretes Diffusionsmodell (UniformD3PM, 19 Mio. Parameter), das aus 35-dimensionalen AIST++-Musikfeatures frameweise Atomic-Move-Pläne generiert — wurde mit sieben unabhängigen Mech-Interp-Methoden untersucht: lineare/nichtlineare Probes, symbolisches Attention-Programm-Replacement, Stochastic Parameter Decomposition (SPD), Jacobian-Lens mit Geometrie-Variation, eine NLA-analoge Sub-Workspace-Dekodierung und gewichts-basierte Secret Extraction. Das Ergebnis ist eine kohärente mechanistische Geschichte:
+Der AtomicDance-Planner — ein selbst trainiertes diskretes Diffusionsmodell (UniformD3PM, 19 Mio. Parameter), das aus 35-dimensionalen AIST++-Musikfeatures frameweise Atomic-Move-Pläne generiert — wurde mit acht unabhängigen Mech-Interp-Methoden untersucht: lineare Probes, nichtlineare MLP-Probes, symbolisches Attention-Programm-Replacement, Stochastic Parameter Decomposition (SPD), Jacobian-Lens mit Geometrie-Variation, eine NLA-analoge Sub-Workspace-Dekodierung, gewichts-basierte Secret Extraction und Trajektorien-Geometrie mit Surrogat-Null (Parabel-Detektion). Das Ergebnis ist eine kohärente mechanistische Geschichte:
 
 1. **Der Planner integriert keinen musikalischen Takt.** Beats werden als lokale Impulse perfekt durchgereicht, aber es existiert keine Beat-Phasen-Repräsentation — weder linear noch nichtlinear dekodierbar, und das Verhalten (Transition↔Beat-Alignment) bestätigt es.
 2. **Der Planner führt eine echte, frameweise Verifikations-Spur** („Ist dieses Frame schon final?"), die deutlich mehr ist als Label-Durchleitung: +0.23 AUC über der Label-Identitäts-Baseline auf Movement-Frames, über die gesamte Denoising-Trajektorie.
@@ -18,7 +18,9 @@ Der AtomicDance-Planner — ein selbst trainiertes diskretes Diffusionsmodell (U
 6. **Unterhalb des Workspace: getragen, still, lesbar.** ~88 % der Masse typischer Konzept-Richtungen liegt außerhalb des Top-64-J-Zeilenraums. Injiziert man diese Sub-J-Komponenten, bleibt der Output vollständig blind (Plan-Agreement ≥ 0.999, KL ≤ 0.054) — ein extern trainierter Aktivierungs-Dekoder benennt sie dennoch **perfekt** (Accuracy 1.00 bei 9 von 10 Konzepten, **FPR = 0.000**). Dazu eine Schreib-/Lese-Asymmetrie der Uhr: Die SPD-Schreib-Richtung c63 liegt zu 44,8 % im Workspace (3,6× Zufall), die Probe-Lese-Richtung nur zu 5,0 % (0,4× Zufall) — **geschrieben wird im Workspace, gelesen darunter.**
 7. **Die Trigger-Landschaft ist strukturiert und kausal — aber die Uhr ist kein naiver Gewichts-Pegel.** Input-Optimierung auf den Uhr-Schreib-Pegel des L4-MLP findet nur **4 breite Attraktoren** (Halo-Abfall ~0.7 %) aus ~120 Starts, alle von Neuron-Seeds/Kompositionen gewonnen und im Embedding-Umfeld der dominanten Movement-Labels verankert (Stimuli *und* Lens-dekodierte Writes kreisen um Label 67/86/34). Die Top-Trigger-Richtung ist kausal potent (Uhr-Shift −1.93 vs. Zufall +0.33 ± 0.81). **Aber:** Als Instabilitäts-Detektor auf echten Frames erreicht der signierte Schreibpegel nur AUC 0.304/0.242 — unter Chance, vorzeichen-korrigiert 0.70–0.76 — weit unter der Probe (0.894). Die Rang-1-Richtungen sind vorzeichen-ambig und **CI-gegated** (input-abhängig aktiviert): Ohne das Gate ist die Uhr aus den Gewichten allein nicht lesbar (A9).
 
-Ebenso wichtig wie die Befunde sind die **neun methodischen Artefakte**, die unterwegs identifiziert und neutralisiert wurden — jedes davon hätte unentdeckt zu einem plausiblen, aber falschen Schluss geführt.
+8. **Die Zeitgeometrie ist eine echte Parabel — die lesbare Schritt-Uhr ist Oberfläche.** Ohne injizierte Zeit (t ≡ 99-Replays der echten Sampling-y_t) wächst die Fortschritts-Lesbarkeit mit der Tiefe, bleibt aber mit R² ≤ 0.68 unter der Label-Histogramm-Baseline von y_t; mit injizierter Zeit repliziert sie die LLaDA/Dream-Referenz trivial (0.97–0.999 in jeder Schicht; A10). Die Schritt-Mittel-Trajektorie dagegen ist extrem niedrigdimensional (EV Top-2 ≥ 0.9986), perfekt geordnet (|Spearman(PC1, τ)| ≥ 0.9997) und tatsächlich parabolisch: Parabel-R² bis 0.993, **signifikant über spektrum-gematchten Surrogaten** in den Layern 1–2 und 6–7 (p = 0.0025 < Bonferroni 0.0063) — obwohl die Surrogate selbst im Mittel R² 0.93 liefern (A11): Ohne Null-Test wäre die Parabel in allen 16 Bedingungs-Layer-Kombinationen „detektiert" worden. Kreuz-konsistent über Musik-Hälften erst in der Tiefe (0.91, Layer 6).
+
+Ebenso wichtig wie die Befunde sind die **elf methodischen Artefakte**, die unterwegs identifiziert und neutralisiert wurden — jedes davon hätte unentdeckt zu einem plausiblen, aber falschen Schluss geführt.
 
 ---
 
@@ -29,7 +31,7 @@ Ebenso wichtig wie die Befunde sind die **neun methodischen Artefakte**, die unt
 | Modell | `UniformD3PM(AtomicPlannerTransformer)` — D3PM mit uniformem Übergangskern |
 | Kern | 8-Layer-TransformerEncoder, d=512, 8 Heads, `batch_first=True`, `norm_first=True` |
 | Parameter | 19.044.965 trainierbar (+ 77.000 Buffer: `pe [150,1,512]`, `alphas`, `alpha_bars`) |
-| Input | 35-dim Musikfeatures pro Frame: `[Envelope | 20×MFCC | 12×Chroma | Peak | Beat]` |
+| Input | 35-dim Musikfeatures pro Frame: `[Envelope \| 20×MFCC \| 12×Chroma \| Peak \| Beat]` |
 | Output | Frameweise Logits über 101 Klassen (Label 0 = Transition, 1–100 = Atomic Moves) |
 | Diffusion | 100 Schritte, Cosine-Schedule; Sampler resampelt jede Position jeden Schritt |
 | Checkpoint | `planner_step22180.pt` (nur lesend analysiert; Modell zu jeder Zeit eingefroren) |
@@ -60,6 +62,10 @@ Diese Liste ist das methodische Rückgrat der Arbeit. Jeder Punkt ist ein real a
 **A8 — Interne Anzeigen unter Injektion fester Vektoren enthalten Projektions-Artefakte.** Für einen festen Eingriffsvektor v ist die Verschiebung einer linearen Probe teilweise der konstante Offset α·s·(w·v) — daher das saubere Vorzeichen-Flip zwischen Orth- und Zufalls-Translationen (19c) und Uhr-Shifts von ±0.2–0.4 selbst bei Zufallsrichtungen (20b). Belastbar sind Rotationen (normerhaltend, KL-belegt netzwerk-vermittelt), Selbst-Injektions-Kontrollen (uhr_probe/v_⊥: +18.3, erwartbar) und relative Vergleiche — nie absolute Einzel-Shifts.
 
 **A9 — Rang-1-Zerlegungen haben arbiträre Vorzeichen und input-abhängige Gates.** Der „Schreibpegel entlang einer SPD-Richtung" ist ohne die gelernte Causal-Importance-Funktion fehlspezifiziert: Das Vorzeichen von U_c ist Konvention (V·U fixiert nur das Produkt), und Komponenten sind kontextabhängig aktiviert. Symptom im 21er-Lauf: AUC **unter** Chance (0.304) — wie bei A1 ist Unter-Chance ein Struktur-Warnsignal, kein „keine Information". Statische Lesart-Templates in Auswertungs-Prints verschärfen die Falle; Verdikte müssen konditional aus den Zahlen erzeugt werden.
+
+**A10 — Injizierte Zeit ist kein Befund.** Der Planner bekommt t explizit: `x += time_embedding(t)` wird am Eingang des Encoder-Stacks jeder Position aufaddiert — anders als LLaDA/Dream, wo kein Zeitschritt konditioniert wird. Fortschritts-Dekodierung in der natürlichen Bedingung repliziert damit die Literatur-Referenz („> 0.9 R² aus jeder Schicht"; gemessen 0.97–0.999) exakt — als Durchleitung, nicht als Uhr. Kontrolle: t ≡ 99-Replays der echten Sampling-y_t (das 16er-Design, auf die Schritt-Achse verallgemeinert). *Rest-Vorbehalt: Späte y_t sind unter t ≡ 99 leicht off-distribution; der Zwei-Bedingungs-Vergleich rahmt den Effekt.*
+
+**A11 — Phantom-Parabeln.** PCA glatter, driftender Trajektorien erzeugt *generisch* niederfrequente Polynom-PCs (Random-Walk-PCA → Lissajous-Kurven, „phantom oscillations"). Im Lauf real beziffert: Spektrum-gematchte Surrogate ohne jeden Zeit-Code (Endpunkt-Trend + Phasen-Randomisierung der Residuen pro Dimension) erreichen im Mittel Parabel-R² 0.82–0.94. Ein hoher Parabel-Fit allein ist deshalb **keine** Detektion; belastbar sind die Surrogat-Null (400 Stück, Add-one-p, Bonferroni über Layer), Out-of-Sample-Lesbarkeit aus 2 Dimensionen und Kreuz-Konsistenz über disjunkte Musik-Hälften. *(Nebenlektion aus 23b: Die Histogramm-Baseline wurde zunächst nur geprintet, nicht persistiert — Kennzahlen immer als CSV sichern, vgl. die 21c-Lektion.)*
 
 ---
 
@@ -189,15 +195,42 @@ Konzept nach mlp-secret-extraction: Aus den L4-MLP-Gewichten allein werden per I
 
 ---
 
-## 10. Synthese
+## 10. Befund 8 — Die Parabel ist echt, die lesbare Schritt-Uhr ist Oberfläche (Trajektorien-Geometrie)
 
-> Der AtomicDance-Planner hört keinen Takt, aber er beobachtet sich selbst: Er unterhält eine frameweise, geometrisch kodierte Instabilitäts-Landkarte seines eigenen Denoising-Prozesses — implementiert als superponiertes Ensemble von Rang-1-Richtungen in der MLP-Ausgabe von Layer 4, **geschrieben in den transportierten Workspace, gelesen unterhalb davon** — während der Plan-Inhalt davon getrennt, kategorisch und eingriffsrobust repräsentiert ist. Der Großteil dessen, was im Stream liegt, erreicht den Output nie — bleibt aber von außen vollständig lesbar.
+Test der Latent-Clock-Befunde aus Diffusions-LMs (τ_dlm-Vorlage; LLaDA/Dream: Fortschritt aus jeder Schicht > 0.9 R² dekodierbar; die Zeit-Repräsentation bildet eine geordnete, niedrigdimensionale **parabolische Kurve** im Aktivierungsraum) auf dem Planner: 24 echte Sampling-Trajektorien, per-Schritt/-Layer-Mittelaktivierungen (50 Stützstellen × 8 Layer), Musik-ID-Splits — in zwei Bedingungen: **natürlich** (echtes t) und **t-fest** (t ≡ 99, Replays der echten y_t; A10).
 
-Einordnung: Die Spur ist das frameweise D3PM-Analogon eines Verifikations-Gates (vgl. Termination-Circuits in Reasoning-LMs); die Inhalt/Prozess-Trennung und die Sub-Workspace-Lesbarkeit spiegeln Workspace- und NLA-Befunde aus LLMs im Miniaturformat — mit der residual-bedingten Einschränkung A7, dass „Transport-Subräume" hier nicht low-rank sind. Sieben Methoden, ein konsistentes Bild; jede Methode hat mindestens ein Artefakt der vorherigen korrigiert — und der einzige „Fehlschlag" (Befund 7) ist selbst ein Strukturbefund: Die Uhr ist gegated, nicht statisch.
+**Lesbarkeit (23b):** Natürlich R² 0.970–0.999 in jeder Schicht — die Literatur-Referenz repliziert exakt, ist hier aber reine Durchleitung des injizierten Zeit-Embeddings (A10). t-fest wächst R² mit der Tiefe von −0.09 (L0) auf 0.68 (L7, ab L2 monoton) und bleibt damit **unter der Label-Histogramm-Baseline** von y_t — Verdikt des Laufs: „der lesbare Fortschritt ist Oberflächenstatistik von y_t". Bemerkenswert: Die reine Top-2-PC-Projektion (quadratische Features) liest mit 0.75–0.80 in *jeder* Schicht besser als die volle 512d-Ridge — die Trajektorien-Geometrie generalisiert über Musik-Gruppen, wo die hochdimensionale Probe an Song-Richtungen overfittet.
+
+**Geometrie (23c/23d), t-fest:**
+
+| Layer | R²_512d | R²_Top2 | EV Top-2 | R²_Parabel | Kreuz-Konsistenz | p (vs. Surrogate) |
+|---|---|---|---|---|---|---|
+| 0 | −0.09 | 0.80 | 0.9987 | 0.892 | −57.2 | 0.995 |
+| 1 | 0.21 | 0.78 | 0.9986 | 0.984 | −2.11 | **0.0025** |
+| 2 | 0.08 | 0.78 | 0.9991 | 0.993 | 0.75 | **0.0025** |
+| 3 | 0.26 | 0.77 | 0.9995 | 0.951 | 0.53 | 0.095 |
+| 4 | 0.41 | 0.77 | 0.9997 | 0.944 | 0.66 | 0.187 |
+| 5 | 0.59 | 0.76 | 0.9997 | 0.954 | 0.90 | 0.052 |
+| 6 | 0.64 | 0.75 | 0.9997 | 0.977 | **0.91** | **0.0025** |
+| 7 | 0.68 | 0.76 | 0.9994 | 0.973 | 0.77 | **0.0025** |
+
+Die Schritt-Mittel-Trajektorie ist extrem niedrigdimensional (EV Top-2 ≥ 0.9986) und perfekt geordnet (|Spearman(PC1, τ)| ≥ 0.9997); der Endpunkt-Trend trägt ~95 % ihrer Varianz, die Parabel lebt im kleinen Residuum. **Der A11-Ernstfall trat ein:** Die spektrum-gematchten Surrogate (400 Stück, Add-one-p, Bonferroni 0.05/8 = 0.0063) erreichen im Mittel selbst Parabel-R² 0.92–0.94 — ein naiver Parabel-Fit hätte in allen 16 Bedingungs-Layer-Kombinationen „Parabel!" gemeldet. Real übersteht die Detektion die Null in den Layern 1–2 und 6–7 (p = 0.0025, das Minimum bei 400 Surrogaten); die Kreuz-Konsistenz über Musik-Hälften ist nur in der Tiefe solide (0.90/0.91 bei L5/L6; in L0–L1 ist die Rest-Krümmung hälften-idiosynkratisch, xval bis −57). **In Layer 6 kommt alles zusammen:** R²_Parabel 0.977, p 0.0025, Kreuz-Konsistenz 0.91.
+
+**Natürliche Bedingung als Kontrast:** Das injizierte Sinusoid-Embedding krümmt die Trajektorie massiv (Endpunkt-Trend-Anteil −3 bis −9, schlechter als der Mittelwert), und in frühen Layern ist die Kurve *weniger* parabolisch als ihre Surrogate (p 0.75–1.0). Erst mit der Tiefe formt das Netz daraus eine saubere Parabel (L4–L7: R² 0.986–0.992, p 0.0025, Kreuz-Konsistenz bis 0.98) — der Planner transformiert den injizierten Zeit-Code mit der Tiefe in dieselbe Geometrie-Klasse, die auch der Inhalts-Pfad zeigt.
+
+**Urteil:** Von den drei Latent-Clock-Thesen der Vorlage überlebt (1) „> 0.9 R² aus jeder Schicht" nur als A10-Artefakt, (2) „geordnete, niedrigdimensionale Struktur" vollständig, (3) „parabolische Kurve" als echte, aber **tiefen-abhängige und null-geprüfte** Signatur — am klarsten in Layer 6. *(Persistierungs-Lücke: Die exakte Histogramm-Baseline wurde im v9-Lauf nur geprintet; belegt ist R²_512d ≤ 0.68 < r2_hist. v9.1 persistiert sie nach `planner_parabola_baseline.csv` — Offener Punkt 12.)*
 
 ---
 
-## 11. Offene Punkte
+## 11. Synthese
+
+> Der AtomicDance-Planner hört keinen Takt, aber er beobachtet sich selbst: Er unterhält eine frameweise, geometrisch kodierte Instabilitäts-Landkarte seines eigenen Denoising-Prozesses — implementiert als superponiertes Ensemble von Rang-1-Richtungen in der MLP-Ausgabe von Layer 4, **geschrieben in den transportierten Workspace, gelesen unterhalb davon** — während der Plan-Inhalt davon getrennt, kategorisch und eingriffsrobust repräsentiert ist. Der Großteil dessen, was im Stream liegt, erreicht den Output nie — bleibt aber von außen vollständig lesbar.
+
+Einordnung: Die Spur ist das frameweise D3PM-Analogon eines Verifikations-Gates (vgl. Termination-Circuits in Reasoning-LMs); die Inhalt/Prozess-Trennung und die Sub-Workspace-Lesbarkeit spiegeln Workspace- und NLA-Befunde aus LLMs im Miniaturformat — mit der residual-bedingten Einschränkung A7, dass „Transport-Subräume" hier nicht low-rank sind. Die Parabel-Detektion (Befund 8) schärft diese Trennung auf der Schritt-Achse: Die Prozess-*Geometrie* (geordnete, niedrigdimensionale, in der Tiefe parabolische Trajektorie) ist real und null-geprüft, während die *lesbare* Schritt-Uhr nicht über die Oberflächenstatistik von y_t hinauskommt — der Planner braucht keine tiefe Schrittzählung, weil die Restarbeit frameweise kodiert ist (Befund 4). Acht Methoden, ein konsistentes Bild; jede Methode hat mindestens ein Artefakt der vorherigen korrigiert — und der einzige „Fehlschlag" (Befund 7) ist selbst ein Strukturbefund: Die Uhr ist gegated, nicht statisch.
+
+---
+
+## 12. Offene Punkte
 
 1. **Layer-5–7-Struktur-Heads** gegen die Uhr testen (Probe auf Layer 7 oder Verhaltens-Damage) — A5 auflösen.
 2. **Top-k-Gemeinschafts-Ablation** der SPD-Komponenten (Einzelablation unterschätzt Redundanz) + Schreibrichtungs-Check (cos(U_c63, Probe-Richtung)).
@@ -209,6 +242,9 @@ Einordnung: Die Spur ist das frameweise D3PM-Analogon eines Verifikations-Gates 
 8. **Natürliche Sub-J-Inhalte lesen** (Befund 6 nutzt injizierte Konzepte): z. B. die Uhr rein aus Sub-J-Projektionen dekodieren; dazu Dosis-Wirkungs-Kurve der Output-Blindheit und Dokumentation der False-Positive-Rate.
 9. **Gate-bewusste Secret Extraction (Folge aus Befund 7):** vorzeichen-getrennte Objectives (±u), CI-gegatete Zielfunktion (mit `ci_fn18`), und eine SPD-Basis-Probe (Features `(z·V_c)` der Top-Komponenten → winzige logistische Probe) als Zwischenstufe „Gewichte + minimale Kalibrierung"; der Weight-Reader über die Trainings-Population bleibt der Phase-2-Anschluss.
 10. **Phase 2 — Trainingskontext-Variation:** Literatur- und Versuchsplan liegen in [`training_context_literature.md`](training_context_literature.md) (Achsen Seeds/Daten/Schedule/Beat-Loss/`--transition-weight`/Architektur × v6-Assay).
+11. **Parabel-Steering (vierte These der Latent-Clock-Vorlage):** Injektion entlang der lokalen Parabel-Tangente/-Normale in Layer 6 — verschiebt sich die interne Uhr-Anzeige bzw. die Settledness-Verteilung konsistent zur Kurvenposition? (A8-Kontrollen: Rotationen und relative Vergleiche statt absoluter Shifts.)
+12. **Histogramm-Baseline nachtragen:** r2_hist aus 23b wurde im v9-Lauf nur geprintet (belegt: ≥ 0.68, oberhalb aller 512d-Werte); v9.1 persistiert sie nach `planner_parabola_baseline.csv` — beim nächsten Lauf eintragen und den Top-2-Vergleich (0.75–0.80 vs. Baseline) entscheiden.
+13. **Abschnitt 22 (Spektrale Volumetrie) in den Report übernehmen:** Der v9-Lauf hat 22a/22b mit ausgeführt (k*-Volumen, PR-Karten, `planner_jspace_volume.csv` / `planner_spectral_assay*.csv`) — Zahlen sichten und als Befund nachtragen.
 
 ---
 
@@ -216,6 +252,6 @@ Einordnung: Die Spur ist das frameweise D3PM-Analogon eines Verifikations-Gates 
 
 **Werkzeuge (Forks):** [`Erikiss/explaining_attention_heads`](https://github.com/Erikiss/explaining_attention_heads) (Programm-Replacement) · [`Erikiss/param-decomp`](https://github.com/Erikiss/param-decomp) (`nano_param_decomp`-SPD) · [`Erikiss/jacobian-lens`](https://github.com/Erikiss/jacobian-lens) (J-Lens) · [`Erikiss/nla-introspection`](https://github.com/Erikiss/nla-introspection) (Sub-Workspace-Dekodierung) · [`Erikiss/mlp-secret-extraction`](https://github.com/Erikiss/mlp-secret-extraction) (Abschnitt 21). Beispiel-Vorlagen: subliminal-coax-Notebooks 01–04 (Beat-Tabelle, τ_dlm-Latent-Clock, Puppet-Time-Probes, CoAx).
 
-**Ergebnis-Artefakte** (`MyDrive/AtomicDance/mechinterp/outputs/`): `planner_linear_probes.csv` · `planner_rhythm_frame_probes.csv` · `planner_phase_linear_vs_mlp.csv` · `planner_beat_alignment.csv` · `planner_settledness_probe.csv` · `planner_settledness_controls.csv` · `planner_head_program_bestfit.csv` · `planner_head_replacement_gap.csv` · `planner_spd_component_attribution.csv` · `planner_jacobian_lens.pt` · `planner_jspace_spectra.csv` · `planner_geometry_variation.csv` · `planner_concept_jsplit.csv` · `planner_subj_blindness.csv` · `planner_subj_decoder.csv` · `planner_mlp4_secrets.csv` · `planner_mlp4_secret_validation.csv` (+ zugehörige PNGs).
+**Ergebnis-Artefakte** (`MyDrive/AtomicDance/mechinterp/outputs/`): `planner_linear_probes.csv` · `planner_rhythm_frame_probes.csv` · `planner_phase_linear_vs_mlp.csv` · `planner_beat_alignment.csv` · `planner_settledness_probe.csv` · `planner_settledness_controls.csv` · `planner_head_program_bestfit.csv` · `planner_head_replacement_gap.csv` · `planner_spd_component_attribution.csv` · `planner_jacobian_lens.pt` · `planner_jspace_spectra.csv` · `planner_geometry_variation.csv` · `planner_concept_jsplit.csv` · `planner_subj_blindness.csv` · `planner_subj_decoder.csv` · `planner_mlp4_secrets.csv` · `planner_mlp4_secret_validation.csv` · `planner_jspace_volume.csv` · `planner_spectral_assay.csv` · `planner_spectral_assay_clock.csv` · `planner_parabola_decode.csv` · `planner_parabola_geometry.csv` · `planner_parabola_null.csv` · `planner_parabola_baseline.csv` (ab v9.1) (+ zugehörige PNGs).
 
-**Notebook-Versionen:** v2 Modell-Rekonstruktion verifiziert (`d5bfc58`) → v2.1 sBM-Guard (`750204e`) → v3 Rhythmus-/Settledness-Probes (`0c55641`) → v3.1 Entscheidungszellen (`97b63e0`) → v3.2 Head-Replacement (`b32ff0e`) → v4/v4.1 SPD (`c628d4e`, `1fbf639`) → v5 Jacobian-Lens (`56cdebd`, `dba1f6c`) → v6 Tiefenbohrung (`2c70181`, `1ecb214`, `db784b6`) → v7 Secret Extraction (`7d1ef11`, `f5bc905`).
+**Notebook-Versionen:** v2 Modell-Rekonstruktion verifiziert (`d5bfc58`) → v2.1 sBM-Guard (`750204e`) → v3 Rhythmus-/Settledness-Probes (`0c55641`) → v3.1 Entscheidungszellen (`97b63e0`) → v3.2 Head-Replacement (`b32ff0e`) → v4/v4.1 SPD (`c628d4e`, `1fbf639`) → v5 Jacobian-Lens (`56cdebd`, `dba1f6c`) → v6 Tiefenbohrung (`2c70181`, `1ecb214`, `db784b6`) → v7 Secret Extraction (`7d1ef11`, `f5bc905`) → v8 Spektrale Volumetrie (`745a711`) → v9 Parabel-Detektion (`e90200d`, `016e2ca`, `88a47ba`) → v9.1 Baseline-Persistierung.
