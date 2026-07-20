@@ -169,6 +169,7 @@
 | D. Hilfs-Loss | Beat-Phase-Loss (à la Beat-It/EDGE/MDM), Gewicht gestuft | **Die kausale Intervention zu Befund 1:** Entsteht ein Takt-Integrator, und verändert er die Uhr? |
 | E. `--transition-weight` | bereits vorhandenes Trainings-Flag, gestuft | Direkter Hebel gegen den Transition-Kollaps (`transition_frac` 0.77–1.0) — verschiebt er den A4-Confound? |
 | F. Architektur | Tiefe 4/8/12, Breite via µP | Wandert der Uhr-Ort (L4.linear2 ≈ „letzte Station vor Readout")? |
+| G. FF-Aktivierung | `--activation gelu/poly2/square/gaussian` (seit v10; `poly2` = lernbare Parabel pro FF-Kanal nach [LifeNNgine](https://github.com/Erikiss/LifeNNgine)-Vorbild) | **Die kausale Intervention zu Befund 4/7/8:** Band-selektive Automaten-Regeln werden mit parabolischer Aktivierung dramatisch leichter lernbar (GoL: PolyKAN L(1,1) genügt, wo ReLU scheitert). Vorhersage: Uhr wird kompakt (SPD-Konzentration ↑), gewichts-lesbar (21er-Extraction besteht) und geometrisch schärfer (23er-Parabel) — Superposition/Gating als Kosten der monotonen GELU-Basis, nicht als Design |
 
 **Assay pro Lauf** (Notebook v5 automatisiert + Checkpoint-Schema log-gespaced à la Pythia):
 
@@ -178,6 +179,7 @@
 4. Beat-Phase-R² (15b) + Transition-Beat-Alignment (15d) — Erfolgskontrolle für Achse D.
 5. `transition_frac` vs. Ground-Truth-Rate + BAS (Verhaltens-Gesundheit).
 6. LLC über Checkpoints (devinterp) — Emergenz-Timing, circuit-agnostisch.
+7. Parabel-Geometrie (23c/23d: EV Top-2, Parabel-R² gegen Phasen-Surrogate) + Steering-Verdikt (24c) — der Prozess-Geometrie-Assay; zusammen mit SPD-Konzentration und 21er-Extraction die Erfolgskontrolle für Achse G.
 
 ---
 
